@@ -1,7 +1,7 @@
 from fastmcp import FastMCP
 from typing import List, Literal, Optional
 import os
-import aiosqlite  # Changed: sqlite3 → aiosqlite
+import aiosqlite  
 
 DB_Path = os.path.join(os.path.dirname(__file__), "expenses.db")
 
@@ -39,11 +39,11 @@ Category = Literal["Food", "Travel", "Shopping", "Bills", "Entertainment", "Heal
 
 
 @mcp.tool()
-async def add_expenses(date: str, amount: float, category: Category, subcategory: str = "", note: str = ""):  # Changed: added async
+async def add_expenses(date: str, amount: float, category: Category, subcategory: str = "", note: str = ""): 
     '''Add a new expense entry to the database'''
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            cur = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c:  
+            cur = await c.execute(  
                 """
                 INSERT INTO expenses(
                 date, amount, category, subcategory, note)
@@ -51,20 +51,20 @@ async def add_expenses(date: str, amount: float, category: Category, subcategory
                 """,
                 (date, amount, category, subcategory, note)
             )
-            await c.commit()  # Changed: added await (commit wasn't explicit before, aiosqlite needs it)
+            await c.commit()
             return {'status': 'ok', "id": cur.lastrowid}
-    except Exception as e:  # Changed: added error handling consistent with async style
+    except Exception as e:  
         if "readonly" in str(e).lower():
             return {"status": "error", "message": "Database is in read-only mode. Check file permissions."}
         return {"status": "error", "message": f"Database error: {str(e)}"}
 
 
 @mcp.tool()
-async def list_expenses_by_time_period(start_date, end_date):  # Changed: added async
+async def list_expenses_by_time_period(start_date, end_date): 
     '''List expense entries within an inclusive date range.'''
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            curr = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c: 
+            curr = await c.execute(
                 """
                 SELECT id, date, amount, category, subcategory, note
                 FROM expenses
@@ -75,17 +75,17 @@ async def list_expenses_by_time_period(start_date, end_date):  # Changed: added 
             )
 
             cols = [d[0] for d in curr.description]
-            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+            return [dict(zip(cols, r)) for r in await curr.fetchall()] 
     except Exception as e:
         return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
 
 @mcp.tool()
-async def list_expenses_by_category(category: str):  # Changed: added async
+async def list_expenses_by_category(category: str): 
     """List all expenses belonging to a specific category."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            curr = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c:  
+            curr = await c.execute( 
                 """
                 SELECT id, date, amount, category, subcategory, note
                 FROM expenses
@@ -96,17 +96,17 @@ async def list_expenses_by_category(category: str):  # Changed: added async
             )
 
             cols = [d[0] for d in curr.description]
-            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  
     except Exception as e:
         return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
 
 @mcp.tool()
-async def list_expenses_by_subcategory(subcategory: str):  # Changed: added async
+async def list_expenses_by_subcategory(subcategory: str):  
     """List all expenses belonging to a specific subcategory."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            curr = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c:  
+            curr = await c.execute(  
                 """
                 SELECT id, date, amount, category, subcategory, note
                 FROM expenses
@@ -117,17 +117,17 @@ async def list_expenses_by_subcategory(subcategory: str):  # Changed: added asyn
             )
 
             cols = [d[0] for d in curr.description]
-            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  
     except Exception as e:
         return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
 
 @mcp.tool()
-async def list_expenses_by_date(date: str):  # Changed: added async
+async def list_expenses_by_date(date: str):  
     """List all expenses for a specific date."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            curr = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c:  
+            curr = await c.execute(  
                 """
                 SELECT id, date, amount, category, subcategory, note
                 FROM expenses
@@ -138,17 +138,17 @@ async def list_expenses_by_date(date: str):  # Changed: added async
             )
 
             cols = [d[0] for d in curr.description]
-            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  
     except Exception as e:
         return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
 
 @mcp.tool()
-async def list_expenses_by_amount(min_amount: float, max_amount: float):  # Changed: added async
+async def list_expenses_by_amount(min_amount: float, max_amount: float):  
     """List expenses whose amount lies within the given range."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            curr = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c:  
+            curr = await c.execute(  
                 """
                 SELECT id, date, amount, category, subcategory, note
                 FROM expenses
@@ -159,17 +159,17 @@ async def list_expenses_by_amount(min_amount: float, max_amount: float):  # Chan
             )
 
             cols = [d[0] for d in curr.description]
-            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  
     except Exception as e:
         return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
 
 @mcp.tool()
-async def list_recent_expenses(limit: int = 10):  # Changed: added async
+async def list_recent_expenses(limit: int = 10):  
     """List the most recent expenses."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            curr = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c:  
+            curr = await c.execute(
                 """
                 SELECT id, date, amount, category, subcategory, note
                 FROM expenses
@@ -180,16 +180,16 @@ async def list_recent_expenses(limit: int = 10):  # Changed: added async
             )
 
             cols = [d[0] for d in curr.description]
-            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  
     except Exception as e:
         return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
 
 @mcp.tool()
-async def summarize(start_date, end_date, category=None):  # Changed: added async
+async def summarize(start_date, end_date, category=None): 
     '''Summarize expenses by given date range and if category mentioned then by category'''
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+        async with aiosqlite.connect(DB_Path) as c: 
             query = (
                 """
                 SELECT category, SUM(amount) AS total_count
@@ -204,17 +204,17 @@ async def summarize(start_date, end_date, category=None):  # Changed: added asyn
                 query += " AND category = ?"
                 params.append(category)
 
-            query += " GROUP BY category ORDER BY category ASC"  # Fixed: missing space before GROUP BY (pre-existing bug)
+            query += " GROUP BY category ORDER BY category ASC"  
 
-            curr = await c.execute(query, params)  # Changed: added await
+            curr = await c.execute(query, params)
             cols = [d[0] for d in curr.description]
-            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+            return [dict(zip(cols, r)) for r in await curr.fetchall()] 
     except Exception as e:
         return {"status": "error", "message": f"Error summarizing expenses: {str(e)}"}
 
 
 @mcp.tool()
-async def edit_expense(  # Changed: added async
+async def edit_expense( 
     id: int,
     date: Optional[str] = None,
     amount: Optional[float] = None,
@@ -253,8 +253,8 @@ async def edit_expense(  # Changed: added async
     values.append(id)
 
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            curr = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c:  
+            curr = await c.execute(  
                 f"""
                 UPDATE expenses
                 SET {", ".join(updates)}
@@ -262,7 +262,7 @@ async def edit_expense(  # Changed: added async
                 """,
                 values
             )
-            await c.commit()  # Changed: added await
+            await c.commit() 
 
             if curr.rowcount == 0:
                 return {'status': 'error', 'message': 'Expense not found'}
@@ -273,18 +273,18 @@ async def edit_expense(  # Changed: added async
 
 
 @mcp.tool()
-async def delete_expense(id: int):  # Changed: added async
+async def delete_expense(id: int):  
     """Delete an expense by its ID."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            cur = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c: 
+            cur = await c.execute(  
                 """
                 DELETE FROM expenses
                 WHERE id = ?
                 """,
                 (id,)
             )
-            await c.commit()  # Changed: added await
+            await c.commit() 
 
             if cur.rowcount == 0:
                 return {
@@ -301,29 +301,29 @@ async def delete_expense(id: int):  # Changed: added async
 
 
 @mcp.tool()
-async def add_income(date: str, amount: float, source: str = "Salary", note: str = ""):  # Changed: added async
+async def add_income(date: str, amount: float, source: str = "Salary", note: str = ""):  
     """Add a new income entry."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            cur = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c: 
+            cur = await c.execute(  
                 """
                 INSERT INTO income(date, amount, source, note)
                 VALUES (?, ?, ?, ?)
                 """,
                 (date, amount, source, note)
             )
-            await c.commit()  # Changed: added await
+            await c.commit()  
             return {"status": "ok", "id": cur.lastrowid}
     except Exception as e:
         return {"status": "error", "message": f"Error adding income: {str(e)}"}
 
 
 @mcp.tool()
-async def get_balance(start_date: str, end_date: str):  # Changed: added async
+async def get_balance(start_date: str, end_date: str): 
     """Get total income, expenses and remaining balance for a date range."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
-            income_cur = await c.execute(  # Changed: added await
+        async with aiosqlite.connect(DB_Path) as c:  
+            income_cur = await c.execute(  
                 """
                 SELECT COALESCE(SUM(amount), 0)
                 FROM income
@@ -331,9 +331,9 @@ async def get_balance(start_date: str, end_date: str):  # Changed: added async
                 """,
                 (start_date, end_date)
             )
-            income = (await income_cur.fetchone())[0]  # Changed: added await
+            income = (await income_cur.fetchone())[0] 
 
-            expense_cur = await c.execute(  # Changed: added await
+            expense_cur = await c.execute(  
                 """
                 SELECT COALESCE(SUM(amount), 0)
                 FROM expenses
@@ -341,7 +341,7 @@ async def get_balance(start_date: str, end_date: str):  # Changed: added async
                 """,
                 (start_date, end_date)
             )
-            expenses = (await expense_cur.fetchone())[0]  # Changed: added await
+            expenses = (await expense_cur.fetchone())[0]  
 
         return {
             "total_income": income,
@@ -353,16 +353,16 @@ async def get_balance(start_date: str, end_date: str):  # Changed: added async
 
 
 @mcp.tool()
-async def get_report_data(start_date: str, end_date: str):  # Changed: added async
+async def get_report_data(start_date: str, end_date: str): 
     """
     Return all financial data required to generate a report for the given time period.
     """
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+        async with aiosqlite.connect(DB_Path) as c: 
 
             # ---------------- Income ---------------- #
 
-            income_cur = await c.execute(  # Changed: added await
+            income_cur = await c.execute( 
                 """
                 SELECT id, date, source, amount, note
                 FROM income
@@ -380,12 +380,12 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                     "amount": row[3],
                     "note": row[4]
                 }
-                for row in await income_cur.fetchall()  # Changed: added await
+                for row in await income_cur.fetchall()  
             ]
 
             # ---------------- Expenses ---------------- #
 
-            expense_cur = await c.execute(  # Changed: added await
+            expense_cur = await c.execute(  
                 """
                 SELECT id, date, category, subcategory, amount, note
                 FROM expenses
@@ -404,12 +404,12 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                     "amount": row[4],
                     "note": row[5]
                 }
-                for row in await expense_cur.fetchall()  # Changed: added await
+                for row in await expense_cur.fetchall()  
             ]
 
             # ---------------- Totals ---------------- #
 
-            total_income_cur = await c.execute(  # Changed: added await
+            total_income_cur = await c.execute(  
                 """
                 SELECT COALESCE(SUM(amount),0)
                 FROM income
@@ -417,9 +417,9 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                 """,
                 (start_date, end_date)
             )
-            total_income = (await total_income_cur.fetchone())[0]  # Changed: added await
+            total_income = (await total_income_cur.fetchone())[0]  
 
-            total_expenses_cur = await c.execute(  # Changed: added await
+            total_expenses_cur = await c.execute(  
                 """
                 SELECT COALESCE(SUM(amount),0)
                 FROM expenses
@@ -427,11 +427,11 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                 """,
                 (start_date, end_date)
             )
-            total_expenses = (await total_expenses_cur.fetchone())[0]  # Changed: added await
+            total_expenses = (await total_expenses_cur.fetchone())[0]  
 
             # ---------------- Category Summary ---------------- #
 
-            category_summary_cur = await c.execute(  # Changed: added await
+            category_summary_cur = await c.execute( 
                 """
                 SELECT category, SUM(amount)
                 FROM expenses
@@ -441,7 +441,7 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                 """,
                 (start_date, end_date)
             )
-            category_summary = dict(await category_summary_cur.fetchall())  # Changed: added await
+            category_summary = dict(await category_summary_cur.fetchall())  
 
             # ---------------- Statistics ---------------- #
 
@@ -450,7 +450,7 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
 
             total_transactions = income_entries + expense_entries
 
-            largest_expense_cur = await c.execute(  # Changed: added await
+            largest_expense_cur = await c.execute(  
                 """
                 SELECT amount, category
                 FROM expenses
@@ -460,9 +460,9 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                 """,
                 (start_date, end_date)
             )
-            largest_expense = await largest_expense_cur.fetchone()  # Changed: added await
+            largest_expense = await largest_expense_cur.fetchone() 
 
-            smallest_expense_cur = await c.execute(  # Changed: added await
+            smallest_expense_cur = await c.execute( 
                 """
                 SELECT amount
                 FROM expenses
@@ -472,9 +472,9 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                 """,
                 (start_date, end_date)
             )
-            smallest_expense = await smallest_expense_cur.fetchone()  # Changed: added await
+            smallest_expense = await smallest_expense_cur.fetchone()
 
-            average_expense_cur = await c.execute(  # Changed: added await
+            average_expense_cur = await c.execute(  
                 """
                 SELECT AVG(amount)
                 FROM expenses
@@ -482,10 +482,10 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                 """,
                 (start_date, end_date)
             )
-            average_expense = (await average_expense_cur.fetchone())[0]  # Changed: added await
+            average_expense = (await average_expense_cur.fetchone())[0]  
 
             # Number of distinct days with expenses
-            days_cur = await c.execute(  # Changed: added await
+            days_cur = await c.execute(  
                 """
                 SELECT COUNT(DISTINCT date)
                 FROM expenses
@@ -493,13 +493,13 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                 """,
                 (start_date, end_date)
             )
-            days = (await days_cur.fetchone())[0]  # Changed: added await
+            days = (await days_cur.fetchone())[0] 
 
             average_daily_spending = (
                 total_expenses / days if days else 0
             )
 
-            top_categories_cur = await c.execute(  # Changed: added await
+            top_categories_cur = await c.execute(  
                 """
                 SELECT category, SUM(amount)
                 FROM expenses
@@ -515,7 +515,7 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
                     "category": row[0],
                     "amount": row[1]
                 }
-                for row in await top_categories_cur.fetchall()  # Changed: added await
+                for row in await top_categories_cur.fetchall() 
             ]
 
         return {
@@ -565,16 +565,16 @@ async def get_report_data(start_date: str, end_date: str):  # Changed: added asy
 
 
 @mcp.tool()
-async def delete_all_expenses():  # Changed: added async
+async def delete_all_expenses():  
     """Delete every expense from the database."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+        async with aiosqlite.connect(DB_Path) as c:
 
-            count_cur = await c.execute("SELECT COUNT(*) FROM expenses")  # Changed: added await
-            count = (await count_cur.fetchone())[0]  # Changed: added await
+            count_cur = await c.execute("SELECT COUNT(*) FROM expenses")  
+            count = (await count_cur.fetchone())[0]  
 
-            await c.execute("DELETE FROM expenses")  # Changed: added await
-            await c.commit()  # Changed: added await
+            await c.execute("DELETE FROM expenses") 
+            await c.commit() 
 
         return {
             "status": "success",
@@ -586,16 +586,16 @@ async def delete_all_expenses():  # Changed: added async
 
 
 @mcp.tool()
-async def delete_all_income():  # Changed: added async
+async def delete_all_income():  
     """Delete every income entry from the database."""
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+        async with aiosqlite.connect(DB_Path) as c:  
 
-            count_cur = await c.execute("SELECT COUNT(*) FROM income")  # Changed: added await
-            count = (await count_cur.fetchone())[0]  # Changed: added await
+            count_cur = await c.execute("SELECT COUNT(*) FROM income") 
+            count = (await count_cur.fetchone())[0]  
 
-            await c.execute("DELETE FROM income")  # Changed: added await
-            await c.commit()  # Changed: added await
+            await c.execute("DELETE FROM income") 
+            await c.commit()  
 
         return {
             "status": "success",
@@ -607,7 +607,7 @@ async def delete_all_income():  # Changed: added async
 
 
 @mcp.tool()
-async def delete_month_expenses(year: int, month: int):  # Changed: added async
+async def delete_month_expenses(year: int, month: int):  
     """
     Delete all expenses for a given month.
 
@@ -624,9 +624,9 @@ async def delete_month_expenses(year: int, month: int):  # Changed: added async
         end_date = f"{year}-{month + 1:02d}-01"
 
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+        async with aiosqlite.connect(DB_Path) as c: 
 
-            count_cur = await c.execute(  # Changed: added await
+            count_cur = await c.execute(  
                 """
                 SELECT COUNT(*)
                 FROM expenses
@@ -634,16 +634,16 @@ async def delete_month_expenses(year: int, month: int):  # Changed: added async
                 """,
                 (start_date, end_date)
             )
-            count = (await count_cur.fetchone())[0]  # Changed: added await
+            count = (await count_cur.fetchone())[0]  
 
-            await c.execute(  # Changed: added await
+            await c.execute(  
                 """
                 DELETE FROM expenses
                 WHERE date >= ? AND date < ?
                 """,
                 (start_date, end_date)
             )
-            await c.commit()  # Changed: added await
+            await c.commit()  
 
         return {
             "status": "success",
@@ -657,7 +657,7 @@ async def delete_month_expenses(year: int, month: int):  # Changed: added async
 
 
 @mcp.tool()
-async def delete_month_income(year: int, month: int):  # Changed: added async
+async def delete_month_income(year: int, month: int): 
     """
     Delete all income entries for a given month.
 
@@ -674,9 +674,9 @@ async def delete_month_income(year: int, month: int):  # Changed: added async
         end_date = f"{year}-{month + 1:02d}-01"
 
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+        async with aiosqlite.connect(DB_Path) as c:  
 
-            count_cur = await c.execute(  # Changed: added await
+            count_cur = await c.execute( 
                 """
                 SELECT COUNT(*)
                 FROM income
@@ -684,16 +684,16 @@ async def delete_month_income(year: int, month: int):  # Changed: added async
                 """,
                 (start_date, end_date)
             )
-            count = (await count_cur.fetchone())[0]  # Changed: added await
+            count = (await count_cur.fetchone())[0]  
 
-            await c.execute(  # Changed: added await
+            await c.execute(  
                 """
                 DELETE FROM income
                 WHERE date >= ? AND date < ?
                 """,
                 (start_date, end_date)
             )
-            await c.commit()  # Changed: added await
+            await c.commit()  
 
         return {
             "status": "success",
@@ -707,7 +707,7 @@ async def delete_month_income(year: int, month: int):  # Changed: added async
 
 
 @mcp.tool()
-async def reset_month(year: int, month: int):  # Changed: added async
+async def reset_month(year: int, month: int): 
     """
     Delete all income and expense entries for a given month.
 
@@ -724,9 +724,9 @@ async def reset_month(year: int, month: int):  # Changed: added async
         end_date = f"{year}-{month + 1:02d}-01"
 
     try:
-        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+        async with aiosqlite.connect(DB_Path) as c: 
 
-            expense_count_cur = await c.execute(  # Changed: added await
+            expense_count_cur = await c.execute(  
                 """
                 SELECT COUNT(*)
                 FROM expenses
@@ -734,9 +734,9 @@ async def reset_month(year: int, month: int):  # Changed: added async
                 """,
                 (start_date, end_date)
             )
-            expense_count = (await expense_count_cur.fetchone())[0]  # Changed: added await
+            expense_count = (await expense_count_cur.fetchone())[0]
 
-            income_count_cur = await c.execute(  # Changed: added await
+            income_count_cur = await c.execute(  
                 """
                 SELECT COUNT(*)
                 FROM income
@@ -744,9 +744,9 @@ async def reset_month(year: int, month: int):  # Changed: added async
                 """,
                 (start_date, end_date)
             )
-            income_count = (await income_count_cur.fetchone())[0]  # Changed: added await
+            income_count = (await income_count_cur.fetchone())[0]  
 
-            await c.execute(  # Changed: added await
+            await c.execute(  
                 """
                 DELETE FROM expenses
                 WHERE date >= ? AND date < ?
@@ -754,7 +754,7 @@ async def reset_month(year: int, month: int):  # Changed: added async
                 (start_date, end_date)
             )
 
-            await c.execute(  # Changed: added await
+            await c.execute(  
                 """
                 DELETE FROM income
                 WHERE date >= ? AND date < ?
@@ -762,7 +762,7 @@ async def reset_month(year: int, month: int):  # Changed: added async
                 (start_date, end_date)
             )
 
-            await c.commit()  # Changed: added await
+            await c.commit() 
 
         return {
             "status": "success",
@@ -782,5 +782,5 @@ async def reset_month(year: int, month: int):  # Changed: added async
 
 # Start the server
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=8000)
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
 # Run the server
