@@ -1,14 +1,15 @@
 from fastmcp import FastMCP
 from typing import List, Literal, Optional
 import os
-import sqlite3
+import aiosqlite  # Changed: sqlite3 → aiosqlite
 
 DB_Path = os.path.join(os.path.dirname(__file__), "expenses.db")
 
 mcp = FastMCP(name='Expense-Tracker')
 
-#This function will initialize the database if not already initialized
-def init_db():
+# This function will initialize the database if not already initialized
+def init_db():  # Keep as sync for initialization
+    import sqlite3
     with sqlite3.connect(database=DB_Path) as c:
         c.execute("""
             CREATE TABLE IF NOT EXISTS expenses(
@@ -31,162 +32,192 @@ def init_db():
             """)
         c.commit()
 
+# Initialize database synchronously at module load
 init_db()
 
 Category = Literal["Food", "Travel", "Shopping", "Bills", "Entertainment", "Health", "Other"]
 
 
 @mcp.tool()
-def add_expenses(date : str, amount : float, category : Category, subcategory : str = "", note : str = ""):
+async def add_expenses(date: str, amount: float, category: Category, subcategory: str = "", note: str = ""):  # Changed: added async
     '''Add a new expense entry to the database'''
-    with sqlite3.connect(database=DB_Path) as c:
-        cur = c.execute(
-            """
-            INSERT INTO expenses(
-            date, amount, category, subcategory, note)
-            VALUES (?,?,?,?,?)
-            """,
-            (date, amount, category, subcategory, note)
-        )
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            cur = await c.execute(  # Changed: added await
+                """
+                INSERT INTO expenses(
+                date, amount, category, subcategory, note)
+                VALUES (?,?,?,?,?)
+                """,
+                (date, amount, category, subcategory, note)
+            )
+            await c.commit()  # Changed: added await (commit wasn't explicit before, aiosqlite needs it)
+            return {'status': 'ok', "id": cur.lastrowid}
+    except Exception as e:  # Changed: added error handling consistent with async style
+        if "readonly" in str(e).lower():
+            return {"status": "error", "message": "Database is in read-only mode. Check file permissions."}
+        return {"status": "error", "message": f"Database error: {str(e)}"}
 
-        return {'status' : 'ok', "id" : cur.lastrowid}
-    
+
 @mcp.tool()
-def list_expenses_by_time_period(start_date, end_date):
+async def list_expenses_by_time_period(start_date, end_date):  # Changed: added async
     '''List expense entries within an inclusive date range.'''
-    with sqlite3.connect(DB_Path) as c:
-        curr = c.execute(
-            """
-            SELECT id, date, amount, category, subcategory, note
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            ORDER BY id ASC
-            """,
-            (start_date, end_date)
-        )
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            curr = await c.execute(  # Changed: added await
+                """
+                SELECT id, date, amount, category, subcategory, note
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                ORDER BY id ASC
+                """,
+                (start_date, end_date)
+            )
 
-        cols = [d[0] for d in curr.description]
-        return [dict(zip(cols, r)) for r in curr.fetchall()]
+            cols = [d[0] for d in curr.description]
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+    except Exception as e:
+        return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
+
 
 @mcp.tool()
-def list_expenses_by_category(category: str):
+async def list_expenses_by_category(category: str):  # Changed: added async
     """List all expenses belonging to a specific category."""
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            curr = await c.execute(  # Changed: added await
+                """
+                SELECT id, date, amount, category, subcategory, note
+                FROM expenses
+                WHERE category = ?
+                ORDER BY date DESC
+                """,
+                (category,)
+            )
 
-    with sqlite3.connect(DB_Path) as c:
-        curr = c.execute(
-            """
-            SELECT id, date, amount, category, subcategory, note
-            FROM expenses
-            WHERE category = ?
-            ORDER BY date DESC
-            """,
-            (category,)
-        )
+            cols = [d[0] for d in curr.description]
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+    except Exception as e:
+        return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
-        cols = [d[0] for d in curr.description]
-        return [dict(zip(cols, r)) for r in curr.fetchall()]
-    
+
 @mcp.tool()
-def list_expenses_by_subcategory(subcategory: str):
+async def list_expenses_by_subcategory(subcategory: str):  # Changed: added async
     """List all expenses belonging to a specific subcategory."""
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            curr = await c.execute(  # Changed: added await
+                """
+                SELECT id, date, amount, category, subcategory, note
+                FROM expenses
+                WHERE subcategory = ?
+                ORDER BY date DESC
+                """,
+                (subcategory,)
+            )
 
-    with sqlite3.connect(DB_Path) as c:
-        curr = c.execute(
-            """
-            SELECT id, date, amount, category, subcategory, note
-            FROM expenses
-            WHERE subcategory = ?
-            ORDER BY date DESC
-            """,
-            (subcategory,)
-        )
+            cols = [d[0] for d in curr.description]
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+    except Exception as e:
+        return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
-        cols = [d[0] for d in curr.description]
-        return [dict(zip(cols, r)) for r in curr.fetchall()]
-    
+
 @mcp.tool()
-def list_expenses_by_date(date: str):
+async def list_expenses_by_date(date: str):  # Changed: added async
     """List all expenses for a specific date."""
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            curr = await c.execute(  # Changed: added await
+                """
+                SELECT id, date, amount, category, subcategory, note
+                FROM expenses
+                WHERE date = ?
+                ORDER BY id ASC
+                """,
+                (date,)
+            )
 
-    with sqlite3.connect(DB_Path) as c:
-        curr = c.execute(
-            """
-            SELECT id, date, amount, category, subcategory, note
-            FROM expenses
-            WHERE date = ?
-            ORDER BY id ASC
-            """,
-            (date,)
-        )
+            cols = [d[0] for d in curr.description]
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+    except Exception as e:
+        return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
-        cols = [d[0] for d in curr.description]
-        return [dict(zip(cols, r)) for r in curr.fetchall()]
-    
+
 @mcp.tool()
-def list_expenses_by_amount(min_amount: float, max_amount: float):
+async def list_expenses_by_amount(min_amount: float, max_amount: float):  # Changed: added async
     """List expenses whose amount lies within the given range."""
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            curr = await c.execute(  # Changed: added await
+                """
+                SELECT id, date, amount, category, subcategory, note
+                FROM expenses
+                WHERE amount BETWEEN ? AND ?
+                ORDER BY amount DESC
+                """,
+                (min_amount, max_amount)
+            )
 
-    with sqlite3.connect(DB_Path) as c:
-        curr = c.execute(
-            """
-            SELECT id, date, amount, category, subcategory, note
-            FROM expenses
-            WHERE amount BETWEEN ? AND ?
-            ORDER BY amount DESC
-            """,
-            (min_amount, max_amount)
-        )
+            cols = [d[0] for d in curr.description]
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+    except Exception as e:
+        return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
-        cols = [d[0] for d in curr.description]
-        return [dict(zip(cols, r)) for r in curr.fetchall()]
-    
+
 @mcp.tool()
-def list_recent_expenses(limit: int = 10):
+async def list_recent_expenses(limit: int = 10):  # Changed: added async
     """List the most recent expenses."""
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            curr = await c.execute(  # Changed: added await
+                """
+                SELECT id, date, amount, category, subcategory, note
+                FROM expenses
+                ORDER BY date DESC, id DESC
+                LIMIT ?
+                """,
+                (limit,)
+            )
 
-    with sqlite3.connect(DB_Path) as c:
-        curr = c.execute(
-            """
-            SELECT id, date, amount, category, subcategory, note
-            FROM expenses
-            ORDER BY date DESC, id DESC
-            LIMIT ?
-            """,
-            (limit,)
-        )
+            cols = [d[0] for d in curr.description]
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+    except Exception as e:
+        return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
-        cols = [d[0] for d in curr.description]
-        return [dict(zip(cols, r)) for r in curr.fetchall()]
-    
+
 @mcp.tool()
-def summarize(start_date, end_date, category=None):
+async def summarize(start_date, end_date, category=None):  # Changed: added async
     '''Summarize expenses by given date range and if category mentioned then by category'''
-    with sqlite3.connect(DB_Path) as c:
-        query = (
-            """
-            SELECT category, SUM(amount) AS total_count
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            """
-        )
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            query = (
+                """
+                SELECT category, SUM(amount) AS total_count
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                """
+            )
 
-        params = [start_date, end_date]
+            params = [start_date, end_date]
 
-        if category:
-            query += " AND category = ?"
-            params.append(category)
+            if category:
+                query += " AND category = ?"
+                params.append(category)
 
-        query += "GROUP BY category ORDER BY category ASC"
+            query += " GROUP BY category ORDER BY category ASC"  # Fixed: missing space before GROUP BY (pre-existing bug)
 
-        curr = c.execute(query, params)
-        cols = [d[0] for d in curr.description]
-        return [dict(zip(cols, r)) for r in curr.fetchall()]
-    
+            curr = await c.execute(query, params)  # Changed: added await
+            cols = [d[0] for d in curr.description]
+            return [dict(zip(cols, r)) for r in await curr.fetchall()]  # Changed: added await
+    except Exception as e:
+        return {"status": "error", "message": f"Error summarizing expenses: {str(e)}"}
+
+
 @mcp.tool()
-def edit_expense(
-    id : int,
-    date : Optional[str] = None,
-    amount : Optional[float] = None,
+async def edit_expense(  # Changed: added async
+    id: int,
+    date: Optional[str] = None,
+    amount: Optional[float] = None,
     category: Optional[str] = None,
     subcategory: Optional[str] = None,
     note: Optional[str] = None,
@@ -217,172 +248,190 @@ def edit_expense(
         values.append(note)
 
     if not updates:
-        return {"status" : 'error', "Message" : 'No fields provided to update'}
-    
+        return {"status": 'error', "Message": 'No fields provided to update'}
+
     values.append(id)
 
-    with sqlite3.connect(DB_Path) as c:
-        curr = c.execute(
-            f"""
-            UPDATE expenses
-            SET {", ".join(updates)}
-            WHERE id = ?
-            """,
-            values
-        )
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            curr = await c.execute(  # Changed: added await
+                f"""
+                UPDATE expenses
+                SET {", ".join(updates)}
+                WHERE id = ?
+                """,
+                values
+            )
+            await c.commit()  # Changed: added await
 
-        if curr.rowcount == 0:
-            return {'status' : 'error', 'message' : 'Expense not found'}
-        
-    return {"status": 'success', 'message' : 'Expense updated successfully'}
+            if curr.rowcount == 0:
+                return {'status': 'error', 'message': 'Expense not found'}
+
+        return {"status": 'success', 'message': 'Expense updated successfully'}
+    except Exception as e:
+        return {"status": "error", "message": f"Error editing expense: {str(e)}"}
+
 
 @mcp.tool()
-def delete_expense(id: int):
+async def delete_expense(id: int):  # Changed: added async
     """Delete an expense by its ID."""
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            cur = await c.execute(  # Changed: added await
+                """
+                DELETE FROM expenses
+                WHERE id = ?
+                """,
+                (id,)
+            )
+            await c.commit()  # Changed: added await
 
-    with sqlite3.connect(DB_Path) as c:
-        cur = c.execute(
-            """
-            DELETE FROM expenses
-            WHERE id = ?
-            """,
-            (id,)
-        )
+            if cur.rowcount == 0:
+                return {
+                    "status": "error",
+                    "message": f"No expense found with id {id}."
+                }
 
-        if cur.rowcount == 0:
-            return {
-                "status": "error",
-                "message": f"No expense found with id {id}."
-            }
-
-    return {
-        "status": "success",
-        "message": f"Expense {id} deleted successfully."
-    }
-
+        return {
+            "status": "success",
+            "message": f"Expense {id} deleted successfully."
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error deleting expense: {str(e)}"}
 
 
 @mcp.tool()
-def add_income(date: str, amount: float, source: str = "Salary", note: str = ""):
+async def add_income(date: str, amount: float, source: str = "Salary", note: str = ""):  # Changed: added async
     """Add a new income entry."""
-    with sqlite3.connect(DB_Path) as c:
-        cur = c.execute(
-            """
-            INSERT INTO income(date, amount, source, note)
-            VALUES (?, ?, ?, ?)
-            """,
-            (date, amount, source, note)
-        )
-        return {"status": "ok", "id": cur.lastrowid}
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            cur = await c.execute(  # Changed: added await
+                """
+                INSERT INTO income(date, amount, source, note)
+                VALUES (?, ?, ?, ?)
+                """,
+                (date, amount, source, note)
+            )
+            await c.commit()  # Changed: added await
+            return {"status": "ok", "id": cur.lastrowid}
+    except Exception as e:
+        return {"status": "error", "message": f"Error adding income: {str(e)}"}
 
 
 @mcp.tool()
-def get_balance(start_date: str, end_date: str):
+async def get_balance(start_date: str, end_date: str):  # Changed: added async
     """Get total income, expenses and remaining balance for a date range."""
-    with sqlite3.connect(DB_Path) as c:
-        income = c.execute(
-            """
-            SELECT COALESCE(SUM(amount), 0)
-            FROM income
-            WHERE date BETWEEN ? AND ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
+            income_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COALESCE(SUM(amount), 0)
+                FROM income
+                WHERE date BETWEEN ? AND ?
+                """,
+                (start_date, end_date)
+            )
+            income = (await income_cur.fetchone())[0]  # Changed: added await
 
-        expenses = c.execute(
-            """
-            SELECT COALESCE(SUM(amount), 0)
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            expense_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COALESCE(SUM(amount), 0)
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                """,
+                (start_date, end_date)
+            )
+            expenses = (await expense_cur.fetchone())[0]  # Changed: added await
 
-    return {
-        "total_income": income,
-        "total_expenses": expenses,
-        "balance": income - expenses
-    }
+        return {
+            "total_income": income,
+            "total_expenses": expenses,
+            "balance": income - expenses
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error getting balance: {str(e)}"}
+
 
 @mcp.tool()
-def get_report_data(start_date: str, end_date: str):
+async def get_report_data(start_date: str, end_date: str):  # Changed: added async
     """
     Return all financial data required to generate a report for the given time period.
     """
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
 
-    with sqlite3.connect(DB_Path) as c:
+            # ---------------- Income ---------------- #
 
-        # ---------------- Income ---------------- #
+            income_cur = await c.execute(  # Changed: added await
+                """
+                SELECT id, date, source, amount, note
+                FROM income
+                WHERE date BETWEEN ? AND ?
+                ORDER BY date ASC
+                """,
+                (start_date, end_date)
+            )
 
-        income_cur = c.execute(
-            """
-            SELECT id, date, source, amount, note
-            FROM income
-            WHERE date BETWEEN ? AND ?
-            ORDER BY date ASC
-            """,
-            (start_date, end_date)
-        )
+            income = [
+                {
+                    "id": row[0],
+                    "date": row[1],
+                    "source": row[2],
+                    "amount": row[3],
+                    "note": row[4]
+                }
+                for row in await income_cur.fetchall()  # Changed: added await
+            ]
 
-        income = [
-            {
-                "id": row[0],
-                "date": row[1],
-                "source": row[2],
-                "amount": row[3],
-                "note": row[4]
-            }
-            for row in income_cur.fetchall()
-        ]
+            # ---------------- Expenses ---------------- #
 
-        # ---------------- Expenses ---------------- #
+            expense_cur = await c.execute(  # Changed: added await
+                """
+                SELECT id, date, category, subcategory, amount, note
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                ORDER BY date ASC
+                """,
+                (start_date, end_date)
+            )
 
-        expense_cur = c.execute(
-            """
-            SELECT id, date, category, subcategory, amount, note
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            ORDER BY date ASC
-            """,
-            (start_date, end_date)
-        )
+            expenses = [
+                {
+                    "id": row[0],
+                    "date": row[1],
+                    "category": row[2],
+                    "subcategory": row[3],
+                    "amount": row[4],
+                    "note": row[5]
+                }
+                for row in await expense_cur.fetchall()  # Changed: added await
+            ]
 
-        expenses = [
-            {
-                "id": row[0],
-                "date": row[1],
-                "category": row[2],
-                "subcategory": row[3],
-                "amount": row[4],
-                "note": row[5]
-            }
-            for row in expense_cur.fetchall()
-        ]
+            # ---------------- Totals ---------------- #
 
-        # ---------------- Totals ---------------- #
+            total_income_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COALESCE(SUM(amount),0)
+                FROM income
+                WHERE date BETWEEN ? AND ?
+                """,
+                (start_date, end_date)
+            )
+            total_income = (await total_income_cur.fetchone())[0]  # Changed: added await
 
-        total_income = c.execute(
-            """
-            SELECT COALESCE(SUM(amount),0)
-            FROM income
-            WHERE date BETWEEN ? AND ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            total_expenses_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COALESCE(SUM(amount),0)
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                """,
+                (start_date, end_date)
+            )
+            total_expenses = (await total_expenses_cur.fetchone())[0]  # Changed: added await
 
-        total_expenses = c.execute(
-            """
-            SELECT COALESCE(SUM(amount),0)
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            # ---------------- Category Summary ---------------- #
 
-        # ---------------- Category Summary ---------------- #
-
-        category_summary = dict(
-            c.execute(
+            category_summary_cur = await c.execute(  # Changed: added await
                 """
                 SELECT category, SUM(amount)
                 FROM expenses
@@ -391,67 +440,66 @@ def get_report_data(start_date: str, end_date: str):
                 ORDER BY SUM(amount) DESC
                 """,
                 (start_date, end_date)
-            ).fetchall()
-        )
+            )
+            category_summary = dict(await category_summary_cur.fetchall())  # Changed: added await
 
-        # ---------------- Statistics ---------------- #
+            # ---------------- Statistics ---------------- #
 
-        income_entries = len(income)
-        expense_entries = len(expenses)
+            income_entries = len(income)
+            expense_entries = len(expenses)
 
-        total_transactions = income_entries + expense_entries
+            total_transactions = income_entries + expense_entries
 
-        largest_expense = c.execute(
-            """
-            SELECT amount, category
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            ORDER BY amount DESC
-            LIMIT 1
-            """,
-            (start_date, end_date)
-        ).fetchone()
+            largest_expense_cur = await c.execute(  # Changed: added await
+                """
+                SELECT amount, category
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                ORDER BY amount DESC
+                LIMIT 1
+                """,
+                (start_date, end_date)
+            )
+            largest_expense = await largest_expense_cur.fetchone()  # Changed: added await
 
-        smallest_expense = c.execute(
-            """
-            SELECT amount
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            ORDER BY amount ASC
-            LIMIT 1
-            """,
-            (start_date, end_date)
-        ).fetchone()
+            smallest_expense_cur = await c.execute(  # Changed: added await
+                """
+                SELECT amount
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                ORDER BY amount ASC
+                LIMIT 1
+                """,
+                (start_date, end_date)
+            )
+            smallest_expense = await smallest_expense_cur.fetchone()  # Changed: added await
 
-        average_expense = c.execute(
-            """
-            SELECT AVG(amount)
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            average_expense_cur = await c.execute(  # Changed: added await
+                """
+                SELECT AVG(amount)
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                """,
+                (start_date, end_date)
+            )
+            average_expense = (await average_expense_cur.fetchone())[0]  # Changed: added await
 
-        # Number of distinct days with expenses
-        days = c.execute(
-            """
-            SELECT COUNT(DISTINCT date)
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            # Number of distinct days with expenses
+            days_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COUNT(DISTINCT date)
+                FROM expenses
+                WHERE date BETWEEN ? AND ?
+                """,
+                (start_date, end_date)
+            )
+            days = (await days_cur.fetchone())[0]  # Changed: added await
 
-        average_daily_spending = (
-            total_expenses / days if days else 0
-        )
+            average_daily_spending = (
+                total_expenses / days if days else 0
+            )
 
-        top_categories = [
-            {
-                "category": row[0],
-                "amount": row[1]
-            }
-            for row in c.execute(
+            top_categories_cur = await c.execute(  # Changed: added await
                 """
                 SELECT category, SUM(amount)
                 FROM expenses
@@ -461,90 +509,105 @@ def get_report_data(start_date: str, end_date: str):
                 LIMIT 3
                 """,
                 (start_date, end_date)
-            ).fetchall()
-        ]
-
-    return {
-
-        "period": {
-            "start_date": start_date,
-            "end_date": end_date
-        },
-
-        "income": income,
-
-        "expenses": expenses,
-
-        "summary": {
-            "total_income": total_income,
-            "total_expenses": total_expenses,
-            "balance": total_income - total_expenses
-        },
-
-        "statistics": {
-            "total_transactions": total_transactions,
-            "income_entries": income_entries,
-            "expense_entries": expense_entries,
-            "largest_expense": {
-                "amount": largest_expense[0] if largest_expense else 0,
-                "category": largest_expense[1] if largest_expense else None
-            },
-            "smallest_expense": (
-                smallest_expense[0] if smallest_expense else 0
-            ),
-            "average_expense": round(
-                average_expense if average_expense else 0,
-                2
-            ),
-            "average_daily_spending": round(
-                average_daily_spending,
-                2
             )
-        },
+            top_categories = [
+                {
+                    "category": row[0],
+                    "amount": row[1]
+                }
+                for row in await top_categories_cur.fetchall()  # Changed: added await
+            ]
 
-        "category_summary": category_summary,
+        return {
 
-        "top_categories": top_categories
-    }
+            "period": {
+                "start_date": start_date,
+                "end_date": end_date
+            },
+
+            "income": income,
+
+            "expenses": expenses,
+
+            "summary": {
+                "total_income": total_income,
+                "total_expenses": total_expenses,
+                "balance": total_income - total_expenses
+            },
+
+            "statistics": {
+                "total_transactions": total_transactions,
+                "income_entries": income_entries,
+                "expense_entries": expense_entries,
+                "largest_expense": {
+                    "amount": largest_expense[0] if largest_expense else 0,
+                    "category": largest_expense[1] if largest_expense else None
+                },
+                "smallest_expense": (
+                    smallest_expense[0] if smallest_expense else 0
+                ),
+                "average_expense": round(
+                    average_expense if average_expense else 0,
+                    2
+                ),
+                "average_daily_spending": round(
+                    average_daily_spending,
+                    2
+                )
+            },
+
+            "category_summary": category_summary,
+
+            "top_categories": top_categories
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error generating report: {str(e)}"}
+
 
 @mcp.tool()
-def delete_all_expenses():
+async def delete_all_expenses():  # Changed: added async
     """Delete every expense from the database."""
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
 
-    with sqlite3.connect(DB_Path) as c:
+            count_cur = await c.execute("SELECT COUNT(*) FROM expenses")  # Changed: added await
+            count = (await count_cur.fetchone())[0]  # Changed: added await
 
-        count = c.execute(
-            "SELECT COUNT(*) FROM expenses"
-        ).fetchone()[0]
+            await c.execute("DELETE FROM expenses")  # Changed: added await
+            await c.commit()  # Changed: added await
 
-        c.execute("DELETE FROM expenses")
+        return {
+            "status": "success",
+            "deleted_entries": count,
+            "message": f"Deleted {count} expense entries."
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error deleting expenses: {str(e)}"}
 
-    return {
-        "status": "success",
-        "deleted_entries": count,
-        "message": f"Deleted {count} expense entries."
-    }
 
 @mcp.tool()
-def delete_all_income():
+async def delete_all_income():  # Changed: added async
     """Delete every income entry from the database."""
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
 
-    with sqlite3.connect(DB_Path) as c:
+            count_cur = await c.execute("SELECT COUNT(*) FROM income")  # Changed: added await
+            count = (await count_cur.fetchone())[0]  # Changed: added await
 
-        count = c.execute(
-            "SELECT COUNT(*) FROM income"
-        ).fetchone()[0]
+            await c.execute("DELETE FROM income")  # Changed: added await
+            await c.commit()  # Changed: added await
 
-        c.execute("DELETE FROM income")
+        return {
+            "status": "success",
+            "deleted_entries": count,
+            "message": f"Deleted {count} income entries."
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error deleting income: {str(e)}"}
 
-    return {
-        "status": "success",
-        "deleted_entries": count,
-        "message": f"Deleted {count} income entries."
-    }
 
 @mcp.tool()
-def delete_month_expenses(year: int, month: int):
+async def delete_month_expenses(year: int, month: int):  # Changed: added async
     """
     Delete all expenses for a given month.
 
@@ -560,35 +623,41 @@ def delete_month_expenses(year: int, month: int):
     else:
         end_date = f"{year}-{month + 1:02d}-01"
 
-    with sqlite3.connect(DB_Path) as c:
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
 
-        count = c.execute(
-            """
-            SELECT COUNT(*)
-            FROM expenses
-            WHERE date >= ? AND date < ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            count_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COUNT(*)
+                FROM expenses
+                WHERE date >= ? AND date < ?
+                """,
+                (start_date, end_date)
+            )
+            count = (await count_cur.fetchone())[0]  # Changed: added await
 
-        c.execute(
-            """
-            DELETE FROM expenses
-            WHERE date >= ? AND date < ?
-            """,
-            (start_date, end_date)
-        )
+            await c.execute(  # Changed: added await
+                """
+                DELETE FROM expenses
+                WHERE date >= ? AND date < ?
+                """,
+                (start_date, end_date)
+            )
+            await c.commit()  # Changed: added await
 
-    return {
-        "status": "success",
-        "deleted_entries": count,
-        "month": month,
-        "year": year,
-        "message": f"Deleted {count} expense entries for {year}-{month:02d}."
-    }
+        return {
+            "status": "success",
+            "deleted_entries": count,
+            "month": month,
+            "year": year,
+            "message": f"Deleted {count} expense entries for {year}-{month:02d}."
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error deleting month expenses: {str(e)}"}
+
 
 @mcp.tool()
-def delete_month_income(year: int, month: int):
+async def delete_month_income(year: int, month: int):  # Changed: added async
     """
     Delete all income entries for a given month.
 
@@ -604,35 +673,41 @@ def delete_month_income(year: int, month: int):
     else:
         end_date = f"{year}-{month + 1:02d}-01"
 
-    with sqlite3.connect(DB_Path) as c:
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
 
-        count = c.execute(
-            """
-            SELECT COUNT(*)
-            FROM income
-            WHERE date >= ? AND date < ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            count_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COUNT(*)
+                FROM income
+                WHERE date >= ? AND date < ?
+                """,
+                (start_date, end_date)
+            )
+            count = (await count_cur.fetchone())[0]  # Changed: added await
 
-        c.execute(
-            """
-            DELETE FROM income
-            WHERE date >= ? AND date < ?
-            """,
-            (start_date, end_date)
-        )
+            await c.execute(  # Changed: added await
+                """
+                DELETE FROM income
+                WHERE date >= ? AND date < ?
+                """,
+                (start_date, end_date)
+            )
+            await c.commit()  # Changed: added await
 
-    return {
-        "status": "success",
-        "deleted_entries": count,
-        "month": month,
-        "year": year,
-        "message": f"Deleted {count} income entries for {year}-{month:02d}."
-    }
+        return {
+            "status": "success",
+            "deleted_entries": count,
+            "month": month,
+            "year": year,
+            "message": f"Deleted {count} income entries for {year}-{month:02d}."
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error deleting month income: {str(e)}"}
+
 
 @mcp.tool()
-def reset_month(year: int, month: int):
+async def reset_month(year: int, month: int):  # Changed: added async
     """
     Delete all income and expense entries for a given month.
 
@@ -648,56 +723,64 @@ def reset_month(year: int, month: int):
     else:
         end_date = f"{year}-{month + 1:02d}-01"
 
-    with sqlite3.connect(DB_Path) as c:
+    try:
+        async with aiosqlite.connect(DB_Path) as c:  # Changed: added async
 
-        expense_count = c.execute(
-            """
-            SELECT COUNT(*)
-            FROM expenses
-            WHERE date >= ? AND date < ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            expense_count_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COUNT(*)
+                FROM expenses
+                WHERE date >= ? AND date < ?
+                """,
+                (start_date, end_date)
+            )
+            expense_count = (await expense_count_cur.fetchone())[0]  # Changed: added await
 
-        income_count = c.execute(
-            """
-            SELECT COUNT(*)
-            FROM income
-            WHERE date >= ? AND date < ?
-            """,
-            (start_date, end_date)
-        ).fetchone()[0]
+            income_count_cur = await c.execute(  # Changed: added await
+                """
+                SELECT COUNT(*)
+                FROM income
+                WHERE date >= ? AND date < ?
+                """,
+                (start_date, end_date)
+            )
+            income_count = (await income_count_cur.fetchone())[0]  # Changed: added await
 
-        c.execute(
-            """
-            DELETE FROM expenses
-            WHERE date >= ? AND date < ?
-            """,
-            (start_date, end_date)
-        )
+            await c.execute(  # Changed: added await
+                """
+                DELETE FROM expenses
+                WHERE date >= ? AND date < ?
+                """,
+                (start_date, end_date)
+            )
 
-        c.execute(
-            """
-            DELETE FROM income
-            WHERE date >= ? AND date < ?
-            """,
-            (start_date, end_date)
-        )
+            await c.execute(  # Changed: added await
+                """
+                DELETE FROM income
+                WHERE date >= ? AND date < ?
+                """,
+                (start_date, end_date)
+            )
 
-    return {
-        "status": "success",
-        "month": month,
-        "year": year,
-        "deleted_expenses": expense_count,
-        "deleted_income": income_count,
-        "total_deleted": expense_count + income_count,
-        "message": (
-            f"Reset financial data for {year}-{month:02d}. "
-            f"Deleted {expense_count} expenses and {income_count} income entries."
-        )
-    }
+            await c.commit()  # Changed: added await
+
+        return {
+            "status": "success",
+            "month": month,
+            "year": year,
+            "deleted_expenses": expense_count,
+            "deleted_income": income_count,
+            "total_deleted": expense_count + income_count,
+            "message": (
+                f"Reset financial data for {year}-{month:02d}. "
+                f"Deleted {expense_count} expenses and {income_count} income entries."
+            )
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error resetting month: {str(e)}"}
 
 
+# Start the server
 if __name__ == "__main__":
-    mcp.run()
-#Run the server
+    mcp.run(transport="http", host="0.0.0.0", port=8000)
+# Run the server
